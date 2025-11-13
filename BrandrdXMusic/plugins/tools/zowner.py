@@ -17,7 +17,7 @@ async def help(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton(
-                        "ƨσʋяcɛ", url=f"https://github.com/WCGKING/BrandrdXMusic"
+                        "ƨσʋяcɛ", url=f"https://t.me/NOBITAXD7"
                     )
                 ]
             ]
@@ -34,7 +34,7 @@ async def clones(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton(
-                        "ƨσʋяcɛ", url=f"https://github.com/WCGKING/BrandrdXMusic"
+                        "ƨσʋяcɛ", url=f"https://t.me/NOBITAXD7"
                     )
                 ]
             ]
@@ -68,7 +68,7 @@ async def add_allbot(client, message):
     command_parts = message.text.split(" ")
     if len(command_parts) != 2:
         await message.reply(
-            "**⚠️ ɪɴᴠᴀʟɪᴅ ᴄᴏᴍᴍᴀɴᴅ ғᴏʀᴍᴀᴛ. ᴘʟᴇᴀsᴇ ᴜsᴇ ʟɪᴋᴇ » `/gadd @Systumm_music_bot`**"
+            "**⚠️ ɪɴᴠᴀʟɪᴅ ᴄᴏᴍᴍᴀɴᴅ ғᴏʀᴍᴀᴛ. ᴘʟᴇᴀsᴇ ᴜsᴇ ʟɪᴋᴇ » `/gadd @RADHE_MUSIC_BOT`**"
         )
         return
 
