@@ -1,136 +1,93 @@
 from BrandrdXMusic import app
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram import filters
 
 games = {}
 
-# बोर्ड UI
 def get_board_markup(board):
     keyboard = []
     for i in range(0, 9, 3):
-        row = []
-        for j in range(3):
-            idx = i + j
-            text = board[idx] if board[idx] != " " else " "
-            row.append(InlineKeyboardButton(text, callback_data=str(idx)))
+        row = [InlineKeyboardButton(board[i+j] if board[i+j] != " " else " ", callback_data=str(i+j)) for j in range(3)]
         keyboard.append(row)
     return InlineKeyboardMarkup(keyboard)
 
-# जीत चेक
-def check_winner(b):
-    wins = [
-        (0,1,2),(3,4,5),(6,7,8),
-        (0,3,6),(1,4,7),(2,5,8),
-        (0,4,8),(2,4,6)
-    ]
-    for x, y, z in wins:
-        if b[x] == b[y] == b[z] and b[x] != " ":
-            return b[x]
-    if " " not in b:
-        return "D"
+def check_winner(board):
+    wins = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+    for a, b, c in wins:
+        if board[a] == board[b] == board[c] and board[a] != " ":
+            return board[a]
+    if " " not in board:
+        return "D"  # Draw
     return None
 
-# कमांड चेक (username सहित)
-def is_cmd(text, cmd):
-    try:
-        return text.split()[0].split("@")[0] == cmd
-    except:
-        return False
-
-# /startgame
-@app.on_message()
+@app.on_message(filters.command("startgame", prefixes=["/"]))
 async def start_game(client, message):
-    if not message.text:
-        return
-    
-    if is_cmd(message.text, "/startgame"):
-        chat_id = message.chat.id
-
-        # अगर गेम पहले से चल रहा है
-        if chat_id in games:
-            await message.reply("पहले से एक गेम चल रहा है!")
-            return
-        
-        # नया गेम बनाएँ
+    chat_id = message.chat.id
+    if chat_id in games:
+        await message.reply("पहले से एक गेम चल रहा है!")
+    else:
         games[chat_id] = {
             "board": [" "] * 9,
             "turn": "X",
-            "players": [message.from_user.id]
+            "players": [message.from_user.id],
         }
+        await message.reply("टिक-टैक-टो शुरू! दूसरा खिलाड़ी /joingame से जुड़ें।", reply_markup=get_board_markup(games[chat_id]["board"]))
 
-        await message.reply(
-            "टिक-टैक-टो शुरू! दूसरा खिलाड़ी /joingame से जुड़ें।",
-            reply_markup=get_board_markup(games[chat_id]["board"])
-        )
-
-# /joingame
-@app.on_message()
+@app.on_message(filters.command("joingame", prefixes=["/"]))
 async def join_game(client, message):
-    if not message.text:
+    chat_id = message.chat.id
+    if chat_id not in games:
+        await message.reply("कोई गेम शुरू नहीं है। पहले /startgame चलाएँ।")
         return
-    
-    if is_cmd(message.text, "/joingame"):
-        chat_id = message.chat.id
 
-        if chat_id not in games:
-            await message.reply("पहले /startgame करना पड़ेगा!")
-            return
+    game = games[chat_id]
+    if len(game["players"]) >= 2:
+        await message.reply("दो खिलाड़ी पहले से जुड़े हुए हैं।")
+        return
 
-        game = games[chat_id]
+    if message.from_user.id in game["players"]:
+        await message.reply("आप पहले ही गेम में हैं।")
+        return
 
-        if len(game["players"]) == 2:
-            await message.reply("दो खिलाड़ी पहले से जुड़े हैं।")
-            return
+    game["players"].append(message.from_user.id)
+    await message.reply("आप गेम में जुड़ गए हैं! अब बटन दबाकर अपनी चाल चलें।")
 
-        if message.from_user.id in game["players"]:
-            await message.reply("आप पहले से गेम में हैं!")
-            return
-
-        game["players"].append(message.from_user.id)
-        await message.reply("आप गेम में जुड़ गए! अब बटन दबाकर चाल चलें।")
-
-# बटन / move
 @app.on_callback_query()
-async def move_handler(client, cq):
-    chat = cq.message.chat.id
-    user = cq.from_user.id
+async def handle_move(client, callback_query):
+    chat_id = callback_query.message.chat.id
+    user_id = callback_query.from_user.id
 
-    if chat not in games:
-        await cq.answer("कोई गेम नहीं चल रहा!", show_alert=True)
+    if chat_id not in games:
+        await callback_query.answer("कोई गेम नहीं चल रहा है।", show_alert=True)
         return
 
-    game = games[chat]
-
-    if len(game["players"]) < 2:
-        await cq.answer("अभी दूसरा खिलाड़ी नहीं जुड़ा!", show_alert=True)
+    game = games[chat_id]
+    if user_id not in game["players"]:
+        await callback_query.answer("आप इस गेम में नहीं हैं।", show_alert=True)
         return
 
-    if user not in game["players"]:
-        await cq.answer("आप खिलाड़ी नहीं हैं!", show_alert=True)
+    index = int(callback_query.data)
+
+    if game["board"][index] != " ":
+        await callback_query.answer("यह जगह पहले से भरी हुई है।", show_alert=True)
         return
 
-    idx = int(cq.data)
-    board = game["board"]
-
-    if board[idx] != " ":
-        await cq.answer("यह जगह भरी हुई है!", show_alert=True)
+    current_turn = game["turn"]
+    if (current_turn == "X" and user_id != game["players"][0]) or (current_turn == "O" and user_id != game["players"][1]):
+        await callback_query.answer("अभी आपकी बारी नहीं है।", show_alert=True)
         return
 
-    expected = "X" if game["players"].index(user) == 0 else "O"
+    game["board"][index] = current_turn
+    game["turn"] = "O" if current_turn == "X" else "X"
 
-    if game["turn"] != expected:
-        await cq.answer("अभी आपकी बारी नहीं है!", show_alert=True)
-        return
-
-    board[idx] = expected
-    game["turn"] = "O" if expected == "X" else "X"
-
-    winner = check_winner(board)
-
+    winner = check_winner(game["board"])
     if winner:
-        msg = "ड्रा!" if winner == "D" else f"विजेता: {winner}"
-        await cq.message.edit_text(msg)
-        del games[chat]
-        return
-
-    await cq.message.edit_reply_markup(reply_markup=get_board_markup(board))
-    await cq.answer()
+        if winner == "D":
+            result_text = "गेम ड्रा हुआ!"
+        else:
+            result_text = f"खेल ख़त्म — जीत: {winner}"
+        await callback_query.message.edit_text(result_text)
+        del games[chat_id]
+    else:
+        await callback_query.message.edit_reply_markup(reply_markup=get_board_markup(game["board"]))
+        await callback_query.answer()
