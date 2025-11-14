@@ -28,8 +28,21 @@ def check_winner(board):
         if board[a] == board[b] == board[c] and board[a] != " ":
             return board[a]
     if " " not in board:
-        return "D"  # Draw
+        return "D"
     return None
+
+
+# -------------------------------
+# 🆕 Stop Game Command Added Here
+# -------------------------------
+@app.on_message(filters.command("stopgame", prefixes=["/"]))
+async def stop_game(client, message):
+    chat_id = message.chat.id
+    if chat_id in games:
+        del games[chat_id]
+        await message.reply("✔️ Game stopped successfully!")
+    else:
+        await message.reply("❌ No game is currently running.")
 
 
 @app.on_message(filters.command("startgame", prefixes=["/"]))
@@ -94,7 +107,6 @@ async def handle_move(client, callback_query):
 
     current_turn = game["turn"]
 
-    # Turn check
     if (current_turn == "X" and user_id != game["players"][0]) or \
        (current_turn == "O" and user_id != game["players"][1]):
         await callback_query.answer("It’s not your turn yet.", show_alert=True)
